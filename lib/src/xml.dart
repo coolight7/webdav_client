@@ -1,0 +1,217 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:xml/xml.dart';
+
+import 'file.dart';
+import 'utils.dart';
+
+const fileXmlStr = '''<d:propfind xmlns:d='DAV:'>
+			<d:prop>
+				<d:displayname/>
+				<d:resourcetype/>
+				<d:getcontentlength/>
+				<d:getcontenttype/>
+				<d:getetag/>
+				<d:getlastmodified/>
+			</d:prop>
+		</d:propfind>''';
+
+// const quotaXmlStr = '''<d:propfind xmlns:d="DAV:">
+//            <d:prop>
+//              <d:quota-available-bytes/>
+//              <d:quota-used-bytes/>
+//            </d:prop>
+//          </d:propfind>''';
+
+class WebdavXml {
+  static XmlDocument parseXml(
+    String input, {
+    XmlEntityMapping? entityMapping,
+  }) {
+    return XmlDocument.parse(
+      input,
+      entityMapping: entityMapping ?? defaultEntityMapping,
+    );
+  }
+
+  static List<XmlElement> findAllElements(XmlDocument document, String tag) =>
+      document.findAllElements(tag, namespace: '*').toList();
+
+  static List<XmlElement> findElements(XmlElement element, String tag) =>
+      element.findElements(tag, namespace: '*').toList();
+
+  static List<File> toFiles(String path, String xmlStr, {skipSelf = true}) {
+    if (false == path.endsWith('/')) {
+      path += "/";
+    }
+    final files = <File>[];
+    final xmlDocument = XmlDocument.parse(xmlStr);
+    final list = findAllElements(xmlDocument, 'response');
+    // response
+    for (final element in list) {
+      // name
+      String href = findElements(element, 'href').single.text;
+
+      // propstats
+      final props = findElements(element, 'propstat');
+      // propstat
+      for (final propstat in props) {
+        // ignore != 200
+        if (findElements(propstat, 'status').single.text.contains('200')) {
+          // prop
+          for (var prop in findElements(propstat, 'prop')) {
+            // isDir
+            bool isDir = findElements(
+                    findElements(prop, 'resourcetype').single, 'collection')
+                .isNotEmpty;
+
+            // skip self
+            if (skipSelf) {
+              skipSelf = false;
+              if (isDir) {
+                break;
+              }
+              throw newXmlError('xml parse error(405)');
+            }
+
+            // mimeType
+            final mimeTypeElements = findElements(prop, 'getcontenttype');
+            String mimeType =
+                mimeTypeElements.isNotEmpty ? mimeTypeElements.single.text : '';
+
+            // size
+            int size = 0;
+            if (!isDir) {
+              final sizeElements = findElements(prop, 'getcontentlength');
+              size = sizeElements.isNotEmpty
+                  ? int.parse(sizeElements.single.text)
+                  : 0;
+            }
+
+            // eTag
+            final eTagElements = findElements(prop, 'getetag');
+            String eTag =
+                eTagElements.isNotEmpty ? eTagElements.single.text : '';
+
+            // create time
+            final cTimeElements = findElements(prop, 'creationdate');
+            DateTime? cTime = cTimeElements.isNotEmpty
+                ? DateTime.parse(cTimeElements.single.text).toLocal()
+                : null;
+
+            // modified time
+            final mTimeElements = findElements(prop, 'getlastmodified');
+            DateTime? mTime = mTimeElements.isNotEmpty
+                ? str2LocalTime(mTimeElements.single.text)
+                : null;
+
+            final str = Uri.decodeFull(href);
+            final name = path2Name(str);
+            final filePath = path + name + (isDir ? '/' : '');
+
+            files.add(File(
+              path: filePath,
+              isDir: isDir,
+              name: name,
+              mimeType: mimeType,
+              size: size,
+              eTag: eTag,
+              cTime: cTime,
+              mTime: mTime,
+            ));
+            break;
+          }
+        }
+      }
+    }
+    return files;
+  }
+
+  static List<File> parseEntityList(String path, String xmlStr,
+      {skipSelf = true}) {
+    if (false == path.endsWith('/')) {
+      path += "/";
+    }
+    final files = <File>[];
+    final xmlDocument = WebdavXml.parseXml(xmlStr);
+    final list = findAllElements(xmlDocument, 'a');
+    // response
+    for (final element in list) {
+      // name
+      String href = findElements(element, 'href').single.text;
+
+      // propstats
+      final props = findElements(element, 'propstat');
+      // propstat
+      for (final propstat in props) {
+        // ignore != 200
+        if (findElements(propstat, 'status').single.text.contains('200')) {
+          // prop
+          for (var prop in findElements(propstat, 'prop')) {
+            // isDir
+            bool isDir = findElements(
+                    findElements(prop, 'resourcetype').single, 'collection')
+                .isNotEmpty;
+
+            // skip self
+            if (skipSelf) {
+              skipSelf = false;
+              if (isDir) {
+                break;
+              }
+              throw newXmlError('xml parse error(405)');
+            }
+
+            // mimeType
+            final mimeTypeElements = findElements(prop, 'getcontenttype');
+            String mimeType =
+                mimeTypeElements.isNotEmpty ? mimeTypeElements.single.text : '';
+
+            // size
+            int size = 0;
+            if (!isDir) {
+              final sizeElements = findElements(prop, 'getcontentlength');
+              size = sizeElements.isNotEmpty
+                  ? int.parse(sizeElements.single.text)
+                  : 0;
+            }
+
+            // eTag
+            final eTagElements = findElements(prop, 'getetag');
+            String eTag =
+                eTagElements.isNotEmpty ? eTagElements.single.text : '';
+
+            // create time
+            final cTimeElements = findElements(prop, 'creationdate');
+            DateTime? cTime = cTimeElements.isNotEmpty
+                ? DateTime.parse(cTimeElements.single.text).toLocal()
+                : null;
+
+            // modified time
+            final mTimeElements = findElements(prop, 'getlastmodified');
+            DateTime? mTime = mTimeElements.isNotEmpty
+                ? str2LocalTime(mTimeElements.single.text)
+                : null;
+
+            final str = Uri.decodeFull(href);
+            final name = path2Name(str);
+            final filePath = path + name + (isDir ? '/' : '');
+
+            files.add(File(
+              path: filePath,
+              isDir: isDir,
+              name: name,
+              mimeType: mimeType,
+              size: size,
+              eTag: eTag,
+              cTime: cTime,
+              mTime: mTime,
+            ));
+            break;
+          }
+        }
+      }
+    }
+    return files;
+  }
+}
