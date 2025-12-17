@@ -79,7 +79,8 @@ DioException newXmlError(dynamic err) {
 // 16进制字符串随机数
 String computeNonce() {
   final rnd = math.Random.secure();
-  final values = List<int>.generate(16, (i) => rnd.nextInt(256));
+  final values =
+      List<int>.generate(16, (i) => rnd.nextInt(256), growable: false);
   return hex.encode(values).substring(0, 16);
 }
 
