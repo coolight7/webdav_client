@@ -2,6 +2,7 @@ name: webdav_client
 description: A simple WebDAV client that supports some common methods.
 
 version: 1.2.2
+publish_to: none
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -11,7 +12,11 @@ dependencies:
   xml: ^6.2.2
   convert: ^3.1.1
   mime: ^2.0.0
-  string_util_xx:
+  string_util_xx: 
+    path: ../string_util_xx
+  util_xx: 
+    path: ../util_xx
+
 
 dev_dependencies:
   test: '>=1.0.0 <2.0.0'

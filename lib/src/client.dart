@@ -7,6 +7,7 @@ import 'file.dart';
 import 'utils.dart';
 import 'webdav_dio.dart';
 import 'xml.dart';
+import 'package:util_xx/util_xx.dart';
 
 /// WebDav Client
 class Client {
@@ -50,7 +51,7 @@ class Client {
   Future<void> ping([CancelToken? cancelToken]) async {
     final resp = await c.wdOptions(this, '/', cancelToken: cancelToken);
     final code = resp.statusCode;
-    if (null != code && code ~/ 100 != 2) {
+    if (false == Httpxx_c.statusCodeIsSuccess(code)) {
       throw newResponseError(resp, message: "resp.code != 2xx: $code");
     }
   }
