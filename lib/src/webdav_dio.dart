@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:string_util_xx/StringUtilxx.dart';
-
 import 'package:dio/dio.dart';
+import 'package:util_xx/Httpxx.dart';
 
 import 'auth.dart';
 import 'client.dart';
@@ -48,13 +47,12 @@ class WdDio with DioMixin implements Dio {
     }
   }
 
-  bool respIsSuccess(Response resp) {
-    final code = resp.statusCode;
-    if (null != code) {
-      // 2xx
-      return (code ~/ 100 == 2);
-    }
-    return StringUtilxx_c.isIgnoreCaseEqual(resp.statusMessage ?? "", "OK");
+  bool respIsSuccess(
+    Response resp, {
+    bool allow3xx = false,
+  }) {
+    return Httpxx_c.respIsSuccess(resp.statusCode,
+        message: resp.statusMessage, allow3xx: allow3xx);
   }
 
   void throwRespError(Response<dynamic> resp) {
@@ -326,12 +324,12 @@ class WdDio with DioMixin implements Dio {
     CancelToken? cancelToken,
   }) async {
     // fix auth error
-    var pResp = await wdOptions(self, path, cancelToken: cancelToken);
+    final pResp = await wdOptions(self, path, cancelToken: cancelToken);
     if (false == respIsSuccess(pResp)) {
       throwRespError(pResp);
     }
 
-    var resp = await req(
+    final resp = await req(
       self,
       'GET',
       path,

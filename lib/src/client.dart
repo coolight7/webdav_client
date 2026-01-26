@@ -51,7 +51,9 @@ class Client {
   Future<void> ping([CancelToken? cancelToken]) async {
     final resp = await c.wdOptions(this, '/', cancelToken: cancelToken);
     final code = resp.statusCode;
-    if (false == Httpxx_c.statusCodeIsSuccess(code)) {
+    if (false ==
+        Httpxx_c.respIsSuccess(code,
+            message: resp.statusMessage, allow3xx: true)) {
       throw newResponseError(resp, message: "resp.code != 2xx: $code");
     }
   }
