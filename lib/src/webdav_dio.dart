@@ -56,8 +56,7 @@ class WdDio with DioMixin implements Dio {
   }
 
   void throwRespError(Response<dynamic> resp) {
-    final valid =
-        (resp.data is String || resp.data is List || resp.data is Map);
+    final valid = (resp.data is String || resp.data is Map);
     throw newResponseError(
       resp,
       message:
