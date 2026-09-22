@@ -25,7 +25,10 @@ class Auth {
   AuthType get type => AuthType.NoAuth;
 
   /// Get authorization data
-  String? authorize(String method, String path) => null;
+  ///
+  /// `requestTarget` 是编码后的请求目标（`path` 或 `path?query`），
+  /// 与请求行里的目标一致（见 `WebdavUrlxx_c.requestTargetOfUri`）。
+  String? authorize(String method, String requestTarget) => null;
 }
 
 /// BasicAuth ------------------------------------
@@ -71,10 +74,11 @@ class DigestAuth extends Auth {
   AuthType get type => AuthType.DigestAuth;
 
   @override
-  String authorize(String method, String path) {
-    dParts.uri = Uri.encodeFull(path);
+  String authorize(String method, String requestTarget) {
+    // 传入的已是编码后的请求目标（见 WebdavUrlxx_c.requestTargetOfUri），
+    // 这里不能再编码，否则与服务端收到的请求行不一致，摘要校验会失败
+    dParts.uri = requestTarget;
     dParts.method = method;
-    // Uri.encodeComponent fix not ascii
     return _getDigestAuthorization();
   }
 

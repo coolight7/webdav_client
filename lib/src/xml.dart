@@ -3,6 +3,7 @@
 import 'package:xml/xml.dart';
 
 import 'file.dart';
+import 'url.dart';
 import 'utils.dart';
 
 const fileXmlStr = '''<d:propfind xmlns:d='DAV:'>
@@ -105,7 +106,7 @@ class WebdavXml {
                 ? str2LocalTime(mTimeElements.single.text)
                 : null;
 
-            final str = Uri.decodeFull(href);
+            final str = WebdavUrlxx_c.tryDecodeHref(href);
             final name = path2Name(str);
             final filePath = path + name + (isDir ? '/' : '');
 
@@ -193,7 +194,7 @@ class WebdavXml {
                 ? str2LocalTime(mTimeElements.single.text)
                 : null;
 
-            final str = Uri.decodeFull(href);
+            final str = WebdavUrlxx_c.tryDecodeHref(href);
             final name = path2Name(str);
             final filePath = path + name + (isDir ? '/' : '');
 

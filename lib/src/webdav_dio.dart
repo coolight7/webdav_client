@@ -7,6 +7,7 @@ import 'package:util_xx/Httpxx.dart';
 
 import 'auth.dart';
 import 'client.dart';
+import 'url.dart';
 import 'utils.dart';
 
 /// Wrapped http client
@@ -84,8 +85,23 @@ class WdDio with DioMixin implements Dio {
       optionsHandler(options);
     }
 
-    // authorization
-    String? str = self.auth.authorize(method, path);
+    // 请求链接：相对路径按路径段编码后与连接地址拼装（完整链接直接使用）
+    // * 服务器返回的文件名可能包含 `#`、`?`、`%` 等字符，直接拼进链接会被
+    //   当成片段/查询分隔符，请求会落到错误的路径上
+    final useUri = WebdavUrlxx_c.tryBuildUrl(self.uri, path);
+    if (null == useUri) {
+      throw DioException(
+        requestOptions: RequestOptions(path: path),
+        type: DioExceptionType.unknown,
+        error: 'Invalid webdav url: ${self.uri} + $path',
+      );
+    }
+
+    // authorization（签名使用实际请求目标）
+    String? str = self.auth.authorize(
+      method,
+      WebdavUrlxx_c.requestTargetOfUri(useUri),
+    );
     if (str != null) {
       options.headers?['Authorization'] = str;
     }
@@ -93,9 +109,7 @@ class WdDio with DioMixin implements Dio {
     options.headers?['skip_zrok_interstitial'] = "1";
 
     var resp = await requestUri<T>(
-      Uri.parse(path.startsWith(RegExp(r'(http|https)://'))
-          ? path
-          : join(self.uri, path)),
+      useUri,
       options: options,
       data: data,
       onSendProgress: onSendProgress,
@@ -281,7 +295,10 @@ class WdDio with DioMixin implements Dio {
   }) async {
     var method = isCopy == true ? 'COPY' : 'MOVE';
     var resp = await req(self, method, oldPath, optionsHandler: (options) {
-      options.headers?['destination'] = Uri.encodeFull(join(self.uri, newPath));
+      // 目标链接同样需要按路径段编码（文件名里的 `#`、`?` 等字符）
+      final destUrl = WebdavUrlxx_c.tryBuildUrl(self.uri, newPath);
+      options.headers?['destination'] =
+          (null != destUrl) ? destUrl.toString() : join(self.uri, newPath);
       options.headers?['overwrite'] = overwrite == true ? 'T' : 'F';
     }, cancelToken: cancelToken);
 
@@ -339,16 +356,24 @@ class WdDio with DioMixin implements Dio {
     if (false == respIsSuccess(resp)) {
       if (resp.statusCode != null) {
         if (resp.statusCode! >= 300 && resp.statusCode! < 400) {
-          return (await req(
-            self,
-            'GET',
-            resp.headers["location"]!.first,
-            optionsHandler: (options) =>
-                options.responseType = ResponseType.bytes,
-            onReceiveProgress: onProgress,
-            cancelToken: cancelToken,
-          ))
-              .data;
+          // Location 由服务器给出，已经是编码后的链接：先转成完整链接再请求，
+          // 避免相对路径被当成原始路径重复编码
+          final location = resp.headers["location"]?.firstOrNull;
+          if (null != location) {
+            final target = WebdavUrlxx_c.isFullUrl(location)
+                ? location
+                : Uri.parse(self.uri).resolve(location).toString();
+            return (await req(
+              self,
+              'GET',
+              target,
+              optionsHandler: (options) =>
+                  options.responseType = ResponseType.bytes,
+              onReceiveProgress: onProgress,
+              cancelToken: cancelToken,
+            ))
+                .data;
+          }
         }
       }
       throwRespError(resp);

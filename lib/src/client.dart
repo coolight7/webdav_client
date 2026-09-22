@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'dart:io' as io;
 import 'auth.dart';
 import 'file.dart';
+import 'url.dart';
 import 'utils.dart';
 import 'webdav_dio.dart';
 import 'xml.dart';
@@ -31,6 +32,22 @@ class Client {
   });
 
   // methods--------------------------------
+
+  /// 资源链接：连接地址 + 服务器返回的原始路径
+  /// * [path] 是原始文本（可含 `#`、`?`、`%`、空格等字符），按路径段编码后拼装，
+  ///   避免这些字符被当成片段/查询分隔符
+  /// * [path] 已是完整链接（http/https）时原样返回
+  Uri? buildUrl(String path) => WebdavUrlxx_c.tryBuildUrl(uri, path);
+
+  /// 对 [path] 请求时使用的鉴权头
+  /// * 签名内容与 [buildUrl] 生成的请求链接一致
+  String? buildAuthorization(String method, String path) {
+    final target = WebdavUrlxx_c.tryRequestTarget(uri, path);
+    if (null == target) {
+      return null;
+    }
+    return auth.authorize(method, target);
+  }
 
   /// Set the public request headers
   void setHeaders(Map<String, dynamic> headers) => c.options.headers = headers;
